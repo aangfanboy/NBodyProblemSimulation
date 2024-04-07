@@ -1,19 +1,17 @@
 import pygame as pg
 import numpy as np
 import random
+import time
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QPushButton, QWidget, QSlider, QLabel, QGridLayout
+import config
 
 class GlobalVariables:
-    TITLE = "OpenGL with Pygame and PyQt5"
     CURRENT_ANGLE = 0
     ZOOM_RATE = 0.1
 
-    G = 6.67430e-11 # m^3 kg^-1 s^-2
+    CALC_SPEED_PER_FRAME = 0
 
 class Renderer:
     def clearError(self):
@@ -195,10 +193,13 @@ class Sphere3d(Renderer):
     def moveAccToVelocity(self):
         self.moveIncrement(self.velocity)
 
+
 class App:
     def initialize_pygame(self):
         pg.init()
         pg.display.set_mode((2440, 1080), pg.OPENGL | pg.DOUBLEBUF)
+        pg.display.set_caption(config.TITLE)
+        pg.display.gl_set_attribute(pg.GL_MULTISAMPLEBUFFERS, 1)
 
         glClearColor(0.2, 0.2, 0.2, 1.0)
 
@@ -216,83 +217,44 @@ class App:
         gluPerspective(45, (2440/1080), 0.4, 50.0)
         glTranslatef(0.0, 0.0, -50)
 
+        self.lastCalculation = time.time()
+        self.counter = 0
+        self.start_time = time.time()
+
         self.run()
 
     def run(self):
-        pressing_mouse = False
         while self.running:
+            self.lastCalculation = time.time()
+            time_in_simulation = self.counter * config.TIME_DISCRETE
+
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     self.running = False
-                if event.type == pg.MOUSEBUTTONDOWN:
-                    pressing_mouse = True
-
-                if event.type == pg.MOUSEBUTTONUP:
-                    pressing_mouse = False
-
-                if event.type == pg.MOUSEMOTION:
-                    if pressing_mouse:
-                        glRotatef(event.rel[0], event.rel[1], 1, 0)
-                        
-                        GlobalVariables.CURRENT_ANGLE += event.rel[0]
-
-                if event.type == pg.MOUSEWHEEL:
-                    glScalef(1 + event.y * 0.1, 1 + event.y * 0.1, 1 + event.y * 0.1)
-
-                    GlobalVariables.ZOOM_RATE += event.y * 0.5
-                    
 
             glClear(GL_COLOR_BUFFER_BIT)
         
             self.cube.draw()
-            pg.display.flip()
-            self.clock.tick(60)
+            
+            self.counter += 1
+            GlobalVariables.CALC_SPEED_PER_FRAME = (time.time() - self.lastCalculation)
 
+            pg.display.flip()
+            self.clock.tick(config.FPS)
+            # there will be an inconsistency in the frame rate, but it can be ignored for now
+
+            if int(self.counter/config.FPS) == float(self.counter/config.FPS):
+                for _ in range(6):
+                    print ("\033[A                             \033[A")
+
+                print(f"Current Frame: {self.counter}\nTime In Simulation: {round(time_in_simulation/60, 2)} minutes\nTime Since Start: {round((time.time() - self.start_time)/60, 2)} minutes", 
+                      f"\nCalculation Time Per Frame: {round(GlobalVariables.CALC_SPEED_PER_FRAME, 4)} seconds")
+                
         pg.quit()
 
-class PyQtController(QWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.setWindowTitle(GlobalVariables.TITLE)
-        self.setGeometry(100, 100, 600, 800)
-
-        self.layout = QGridLayout()
-        
-        self.text = QLabel("Current Angle: 0 degrees")
-        self.text2 = QLabel("Zoom Rate: 0")
-        self.layout.addWidget(self.text, 0, 0)
-        self.layout.addWidget(self.text2, 1, 0)
-
-        self.button = QPushButton("Click me")
-        self.button.clicked.connect(self.button_clicked)
-        self.layout.addWidget(self.button, 2, 0)
-
-        self.setLayout(self.layout)
-
-        self.initUI()
-
-    def initUI(self):
-        timer = QTimer(self)
-        timer.timeout.connect(self.update_text)
-        timer.start(100)
-
-        self.show()
-
-    def update_text(self):
-        self.text.setText(f"Current Angle: {GlobalVariables.CURRENT_ANGLE} degrees")
-        self.text2.setText(f"Zoom Rate: {GlobalVariables.ZOOM_RATE}")
-
-    def button_clicked(self):
-        print("Button clicked")
 
 if __name__ == "__main__":
-    # show both pyqt5 window and pygame window
-    
-    app = QApplication([])
-    controller = PyQtController()
+
 
     App()
-
-    app.exec_()
     
