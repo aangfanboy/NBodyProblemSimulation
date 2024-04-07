@@ -2,6 +2,11 @@
 
 This project aims to simulate the well known N Body problem in physics. Code will be written in Python. After successful simulation of 2 body problem, data visulazition with tensorboard will be integrated.
 
+<p align="center" >
+<img src="images/2BodyTensorBoard.jpeg" alt="TensorBoard Results" width="700"/>
+<img src="images/2bodysim.gif" alt="Simulation Results" width="850"/>
+</p>
+
 ## Time Discretization Policy
 
 For simulating purposes, we will generate **60 frames per second**. If user wants real time speed to match the simulation speed, s/he can set *config.TIME_DISCRETE* to reciprocal of *config.FPS*. This will not promise a perfect time alignment, but error range will be small enough to ignore.

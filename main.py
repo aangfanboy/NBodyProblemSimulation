@@ -8,11 +8,20 @@ from OpenGL.GLUT import *
 
 import config
 
+from tensorboardX import SummaryWriter
+
 class GlobalVariables:
     CURRENT_ANGLE = 0
     CURRENT_ZOOM = 0
 
     CALC_SPEED_PER_FRAME = 0
+
+class TensorBoardManager:
+    def __init__(self):
+        self.tensorboard = SummaryWriter()
+
+    def add_scalar(self, name, value, step):
+        self.tensorboard.add_scalars(name, value, step)
 
 class Renderer:
     def clearError(self):
@@ -128,12 +137,15 @@ class Drawer(Renderer):
         self.openGLCommands(glDrawElements, GL_TRIANGLES, len(self.indices), GL_UNSIGNED_INT, None)
 
 class Sphere3d(Renderer):
-    def __init__(self, radius, sectors, stacks, start_position=(0, 0, 0), velocity=(0, 0, 0), color=(1.0, 1.0, 1.0, 1.0), mass=1.0):
+    def __init__(self, radius, sectors, stacks, start_position=(0, 0, 0), velocity=(0, 0, 0), color=(1.0, 1.0, 1.0, 1.0), mass=1.0, tensorboard : TensorBoardManager=None, id=0):
         self.radius = radius
         self.sectors = sectors
         self.stacks = stacks
         self.position = start_position
         self.mass = mass
+        self.id = id
+
+        self.tensorboardManager = tensorboard
 
         self.vertices = []
         self.indices = []
@@ -197,7 +209,6 @@ class Sphere3d(Renderer):
     def moveAccToVelocity(self):
         self.moveIncrement(self.velocity)
         
-
 class Camera(Renderer):
     def __init__(self):
         super().__init__()
@@ -275,7 +286,6 @@ class Camera(Renderer):
         else:
             return x, y, z
         
-
 class App:
     def initialize_pygame(self):
         pg.init()
@@ -293,10 +303,12 @@ class App:
         self.initialize_pygame()
 
         self.camera = Camera()
-        self.camera.look(from_position=(-5,10,10), to_position=(0, 0, 0))
+        self.camera.look(from_position=(10,10,10), to_position=(0, 0, 0))
 
-        self.sphere = Sphere3d(1.5, 40, 40, start_position=(0, 0, 0), color=(1.0, 0.0, 0.0, 1.0), mass=10**7, velocity=(0.0, 0, 0))
-        self.sphere2 = Sphere3d(.1, 40, 40, start_position=(3, 0, 0), color=(0.0, 1.0, 0.0, 1.0), mass=10**2, velocity=(0, 0, 0.015))
+        self.tensorboardManager = TensorBoardManager()
+
+        self.sphere = Sphere3d(1, 40, 40, start_position=(0, 0, 0), color=(1.0, 0.0, 0.0, 1.0), mass=10**7, velocity=(0., 0.001, 0), tensorboard=self.tensorboardManager, id=1)
+        self.sphere2 = Sphere3d(.1, 40, 40, start_position=(3, 0, 0), color=(0.0, 1.0, 0.0, 1.0), mass=10**2, velocity=(0, 0.001, 0.015), tensorboard=self.tensorboardManager, id=2)
 
         self.lastCalculation = time.time()
         self.counter = 0
@@ -328,6 +340,43 @@ class App:
 
         return acceleration_vector_on_1, acceleration_vector_on_2
     
+    def addTensorboard(self, accList):
+        acc_dict = {
+            'x': {},
+            'y': {},
+            'z': {}
+        }
+        for i, acc in enumerate(accList):
+            for j, axis in enumerate(['x', 'y', 'z']):
+                acc_dict[axis][f"Sphere {i+1}"] = acc[j]
+
+        velocity_dict = {
+            'x': {},
+            'y': {},
+            'z': {}
+        }
+
+        for i, vel in enumerate([self.sphere.velocity, self.sphere2.velocity]):
+            for j, axis in enumerate(['x', 'y', 'z']):
+                velocity_dict[axis][f"Sphere {i+1}"] = vel[j]
+
+        position_dict = {
+            'x': {},
+            'y': {},
+            'z': {}
+        }
+
+        for i, pos in enumerate([self.sphere.position, self.sphere2.position]):
+            for j, axis in enumerate(['x', 'y', 'z']):
+                position_dict[axis][f"Sphere {i+1}"] = pos[j]
+
+        for axis in ['x', 'y', 'z']:
+            for key in acc_dict[axis]:
+                self.tensorboardManager.add_scalar(f"Acceleration/{axis}", {key: acc_dict[axis][key]}, self.counter)
+                self.tensorboardManager.add_scalar(f"Velocity/{axis}", {key: velocity_dict[axis][key]}, self.counter)
+                self.tensorboardManager.add_scalar(f"Position/{axis}", {key: position_dict[axis][key]}, self.counter)
+
+                
     def run(self):
         pressing_mouse = False
         last_mouse_pos = (0, 0)
@@ -374,6 +423,8 @@ class App:
             self.sphere.moveAccToVelocity()
             self.sphere2.moveAccToVelocity()
 
+            self.addTensorboard([acc1, acc2])
+
             # draw the camera
             self.camera.drawCurrentPlane()
         
@@ -401,7 +452,6 @@ class App:
                       f"\nCalculation Time Per Frame: {round(GlobalVariables.CALC_SPEED_PER_FRAME, 4)} seconds\nCurrent Axis Angles: {x_angle}, {y_angle}, {z_angle} degrees\nAcceleration on Sphere 1: {acc1}")
                 
         pg.quit()
-
 
 if __name__ == "__main__":
     App()
