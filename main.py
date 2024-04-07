@@ -1,7 +1,7 @@
 import pygame as pg
 import numpy as np
-import random
 import time
+
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -197,13 +197,13 @@ class Sphere3d(Renderer):
         self.moveIncrement(self.velocity)
 
 class Camera(Renderer):
-    def __init__(self, zFar=50, currentZoom=0):
+    def __init__(self):
         super().__init__()
 
         # assume camera is looking at the origin at all times
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(45, (config.WIDTH/config.HEIGHT), .1, zFar)
+        gluPerspective(45, (config.WIDTH/config.HEIGHT), .1, 50)
         """
         zNear and zFar are the near and far clipping planes of your camera. Basically, if something is closer to your camera than zNear or further away than zFar, it will be culled and not rendered. 
         Usually, you'll just want to set zNear to something really small like 0.01, and zFar basically represents your "view distance".
@@ -211,8 +211,6 @@ class Camera(Renderer):
 
         self.from_position = np.array([0, 0, 0], dtype=np.float32)
         self.to_position =  np.array([0, 0, 0], dtype=np.float32)
-        self.zFar = zFar
-        self.currentZoom = currentZoom
 
         self.buffer = self.openGLCommands(glGenBuffers, 1)
         self.indexBuffer = self.openGLCommands(glGenBuffers, 1)
@@ -288,7 +286,6 @@ class App:
     def __init__(self):
         self.clock = pg.time.Clock()
         self.running = True
-        self.elements = []
         self.pygame_screen = None
 
         self.initialize_pygame()
@@ -298,8 +295,6 @@ class App:
 
         self.sphere = Sphere3d(.1, 40, 40, start_position=(0, 0, 0), color=(1.0, 0.0, 0.0, 1.0))
         self.sphere2 = Sphere3d(.1, 40, 40, start_position=(10, 0, 0), color=(0.0, 1.0, 0.0, 1.0))
-
-        self.elements.append(self.sphere)
 
         self.lastCalculation = time.time()
         self.counter = 0

@@ -28,7 +28,6 @@ Even though camera has settings for rotation and zoom, using the initial Camera 
 - [x] Add Newtonian Coordinate Map to the Main Screen
 - [x] Finalize time discretization process
 - [ ] Finalize the simulation for 2 body problem, share results with different initial momentum
-- [ ] Migrate the Code to C++ and repeat the results
 - [ ] Solve the same 2 body calculations with CUDA (benchmark ?)
 - [ ] Solve the N body problem with CUDA's parallel computing
 
