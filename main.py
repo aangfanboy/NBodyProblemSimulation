@@ -128,11 +128,12 @@ class Drawer(Renderer):
         self.openGLCommands(glDrawElements, GL_TRIANGLES, len(self.indices), GL_UNSIGNED_INT, None)
 
 class Sphere3d(Renderer):
-    def __init__(self, radius, sectors, stacks, start_position=(0, 0, 0), velocity=(0, 0, 0), color=(1.0, 1.0, 1.0, 1.0)):
+    def __init__(self, radius, sectors, stacks, start_position=(0, 0, 0), velocity=(0, 0, 0), color=(1.0, 1.0, 1.0, 1.0), mass=1.0):
         self.radius = radius
         self.sectors = sectors
         self.stacks = stacks
         self.position = start_position
+        self.mass = mass
 
         self.vertices = []
         self.indices = []
@@ -195,6 +196,7 @@ class Sphere3d(Renderer):
 
     def moveAccToVelocity(self):
         self.moveIncrement(self.velocity)
+        
 
 class Camera(Renderer):
     def __init__(self):
@@ -291,10 +293,10 @@ class App:
         self.initialize_pygame()
 
         self.camera = Camera()
-        self.camera.look(from_position=(10,10,10), to_position=(0, 0, 0))
+        self.camera.look(from_position=(-5,10,10), to_position=(0, 0, 0))
 
-        self.sphere = Sphere3d(.1, 40, 40, start_position=(0, 0, 0), color=(1.0, 0.0, 0.0, 1.0))
-        self.sphere2 = Sphere3d(.1, 40, 40, start_position=(10, 0, 0), color=(0.0, 1.0, 0.0, 1.0))
+        self.sphere = Sphere3d(1.5, 40, 40, start_position=(0, 0, 0), color=(1.0, 0.0, 0.0, 1.0), mass=10**7, velocity=(0.0, 0, 0))
+        self.sphere2 = Sphere3d(.1, 40, 40, start_position=(3, 0, 0), color=(0.0, 1.0, 0.0, 1.0), mass=10**2, velocity=(0, 0, 0.015))
 
         self.lastCalculation = time.time()
         self.counter = 0
@@ -302,6 +304,30 @@ class App:
 
         self.run()
 
+    def twoBodySolution(self):
+        # all vectors will be relative to the first sphere
+
+        distance_vector = np.array(self.sphere2.position) - np.array(self.sphere.position) # vector from sphere 1 to sphere 2
+        distance_magnitude = np.sqrt(np.sum(distance_vector ** 2))
+        distance_unit_vector = distance_vector / distance_magnitude
+
+        if distance_magnitude < (self.sphere.radius + self.sphere2.radius): # if the spheres are touching
+            print("COLLISION DETECTED")
+            return np.array([0, 0, 0], dtype=np.float32), np.array([0, 0, 0], dtype=np.float32)
+
+        force_magnitude = config.G * self.sphere.mass * self.sphere2.mass / (distance_magnitude ** 2)
+
+        force_vector_on_1 = force_magnitude * distance_unit_vector # force vector on sphere 1
+        force_vector_on_2 = -force_vector_on_1 # force vector on sphere 2
+
+        acceleration_vector_on_1 = force_vector_on_1 / self.sphere.mass
+        acceleration_vector_on_2 = force_vector_on_2 / self.sphere2.mass
+
+        self.sphere.updateVelocity(acceleration_vector_on_1)
+        self.sphere2.updateVelocity(acceleration_vector_on_2)
+
+        return acceleration_vector_on_1, acceleration_vector_on_2
+    
     def run(self):
         pressing_mouse = False
         last_mouse_pos = (0, 0)
@@ -344,13 +370,17 @@ class App:
 
             glClear(GL_COLOR_BUFFER_BIT)
 
+            acc1, acc2 = self.twoBodySolution()
+            self.sphere.moveAccToVelocity()
+            self.sphere2.moveAccToVelocity()
+
             # draw the camera
             self.camera.drawCurrentPlane()
         
             # draw the elements
 
-            self.sphere.draw()
             self.sphere2.draw()
+            self.sphere.draw()
 
             # rest
             
@@ -362,13 +392,13 @@ class App:
             # there will be an inconsistency in the frame rate, but it can be ignored for now
 
             if int(self.counter/config.FPS) == float(self.counter/config.FPS):
-                for _ in range(5):
+                for _ in range(6):
                     print ("\033[A                             \033[A")
 
                 x_angle, y_angle, z_angle = self.camera.get_xyz_angle()
 
                 print(f"Current Frame: {self.counter}\nTime In Simulation: {round(time_in_simulation/60, 2)} minutes\nTime Since Start: {round((time.time() - self.start_time)/60, 2)} minutes", 
-                      f"\nCalculation Time Per Frame: {round(GlobalVariables.CALC_SPEED_PER_FRAME, 4)} seconds\nCurrent Axis Angles: {x_angle}, {y_angle}, {z_angle} degrees")
+                      f"\nCalculation Time Per Frame: {round(GlobalVariables.CALC_SPEED_PER_FRAME, 4)} seconds\nCurrent Axis Angles: {x_angle}, {y_angle}, {z_angle} degrees\nAcceleration on Sphere 1: {acc1}")
                 
         pg.quit()
 
