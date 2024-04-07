@@ -6,18 +6,26 @@ This project aims to simulate the well known N Body problem in physics. Code ske
 
 For simulating purposes, we will generate **60 frames per second**. If user wants real time speed to match the simulation speed, s/he can set *config.TIME_DISCRETE* to reciprocal of *config.FPS*. This will not promise a perfect time alignment, but error range will be small enogh to ignore.
 
-To increase the speed of simulation, *config.FPS* can be increased or/and *config.TIME_DISCRETE* can be increased. However, latter is not recommended since it will disrupt the continuity illusion.
-
-Please watch for the *Wait Time* log in the console while changing the *FPS* or *TIME_DISCRETE* values. If Wait Time is negative, this means your calculations are not fast enough to keep up with the desired frame rate. In this case, you can either decrease the *FPS* or increase the *config.TIME_DISCRETE* values. Former is recommended.
+To increase the speed of simulation, *config.FPS* or/and *config.TIME_DISCRETE* can be increased. However, the latter is not recommended since it will disrupt the continuity illusion.
 
 ## Markov Policy
 
-Markov Chain rules **will be followed** at each step.
+Markov rule **will be followed** at each step.
+
+## Coordinate System
+
+![coordinat system of opengl](https://learnopengl.com/img/getting-started/coordinate_systems_right_handed.png)
+
+Coordinate system definitions above (1<sup>*</sup>) is valid.
+
+Even though camera has settings for rotation and zoom, using the initial Camera coordinates for this task and sticking with them is recommended. Check the definition:
+
+`self.camera.look(from_position=(10,10,10), to_position=(0, 0, 0))` @main.py init function of the class *App*
 
 ## To-Do
 
 - [x] Create the 3D Environment
-- [ ] Add Newtonian Coordinate Map to the Main Screen
+- [x] Add Newtonian Coordinate Map to the Main Screen
 - [x] Finalize time discretization process
 - [ ] Finalize the simulation for 2 body problem, share results with different initial momentum
 - [ ] Migrate the Code to C++ and repeat the results
@@ -30,4 +38,4 @@ MIT-License Applies
 
 ## References
 
-None for now.
+1. https://learnopengl.com/Getting-started/Coordinate-Systems
