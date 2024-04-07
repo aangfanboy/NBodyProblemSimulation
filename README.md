@@ -1,6 +1,6 @@
 # N Body Problem Simulation With OpenGL & CUDA
 
-This project aims to simulate the well known N Body problem in physics. Code skeleton will be written in Python. After successful simulation of 2 body problem, code will be migrated to C++, then calculations will be made with CUDA.
+This project aims to simulate the well known N Body problem in physics. Code will be written in Python. After successful simulation of 2 body problem, data visulazition with tensorboard will be integrated.
 
 ## Time Discretization Policy
 
