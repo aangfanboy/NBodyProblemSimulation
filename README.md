@@ -22,7 +22,7 @@ X, Y and Z components of position, velocity and acceleration are logged into the
 
 `python -m tensorboard.main --logdir runs`
 
-From there, every vector component can be analyzed indivudally & per time discrete.
+From there, every vector component can be analyzed individually & per time discrete.
 
 ## Time Discretization Policy
 
