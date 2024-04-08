@@ -216,7 +216,7 @@ class Camera(Renderer):
         # assume camera is looking at the origin at all times
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(45, (config.WIDTH/config.HEIGHT), .1, 50)
+        gluPerspective(45, (config.WIDTH/config.HEIGHT), .1, 100)
         """
         zNear and zFar are the near and far clipping planes of your camera. Basically, if something is closer to your camera than zNear or further away than zFar, it will be culled and not rendered. 
         Usually, you'll just want to set zNear to something really small like 0.01, and zFar basically represents your "view distance".
@@ -307,48 +307,84 @@ class App:
 
         self.tensorboardManager = TensorBoardManager()
 
-        self.sphere = Sphere3d(1, 40, 40, start_position=(0, 0, 0), color=(1.0, 0.0, 0.0, 1.0), mass=10**7, velocity=(0., 0.001, 0), tensorboard=self.tensorboardManager, id=1)
-        self.sphere2 = Sphere3d(.1, 40, 40, start_position=(3, 0, 0), color=(0.0, 1.0, 0.0, 1.0), mass=10**2, velocity=(0, 0.001, 0.015), tensorboard=self.tensorboardManager, id=2)
+        self.m1 = Sphere3d(1, 100, 100, color=(1, 1, 0, 1), mass=1.989e10, tensorboard=self.tensorboardManager, id=1, velocity=(0, 0, -0.1))
+        self.m2 = Sphere3d(.5, 100, 100, start_position=(10, 0, 0), color=(1, 0, 0, 1), mass=1.989e8, tensorboard=self.tensorboardManager, id=2, velocity=(0, 0, 0.2))
+        self.m3 = Sphere3d(.5, 100, 100, start_position=(0, 12, 0), color=(0, 1, 0, 1), mass=1.989e8, tensorboard=self.tensorboardManager, id=3, velocity=(0, 0, 0.1))
+
+        self.m4 = Sphere3d(1.5, 100, 100, start_position=(-20, -0, 0), color=(1, 1, 1, 1), mass=1.989e9, tensorboard=self.tensorboardManager, id=4, velocity=(0, 0.1, 0))
+
+        self.elements = [self.m1, self.m2, self.m3, self.m4]
 
         self.lastCalculation = time.time()
         self.counter = 0
         self.start_time = time.time()
 
         self.run()
-
-    def twoBodySolution(self):
-        # all vectors will be relative to the first sphere
-
-        distance_vector = np.array(self.sphere2.position) - np.array(self.sphere.position) # vector from sphere 1 to sphere 2
-        distance_magnitude = np.sqrt(np.sum(distance_vector ** 2))
-        distance_unit_vector = distance_vector / distance_magnitude
-
-        if distance_magnitude < (self.sphere.radius + self.sphere2.radius): # if the spheres are touching
-            print("COLLISION DETECTED")
-            return np.array([0, 0, 0], dtype=np.float32), np.array([0, 0, 0], dtype=np.float32)
-
-        force_magnitude = config.G * self.sphere.mass * self.sphere2.mass / (distance_magnitude ** 2)
-
-        force_vector_on_1 = force_magnitude * distance_unit_vector # force vector on sphere 1
-        force_vector_on_2 = -force_vector_on_1 # force vector on sphere 2
-
-        acceleration_vector_on_1 = force_vector_on_1 / self.sphere.mass
-        acceleration_vector_on_2 = force_vector_on_2 / self.sphere2.mass
-
-        self.sphere.updateVelocity(acceleration_vector_on_1)
-        self.sphere2.updateVelocity(acceleration_vector_on_2)
-
-        return acceleration_vector_on_1, acceleration_vector_on_2
     
-    def addTensorboard(self, accList):
+    def nBodySolution(self):
+        totalForce = {}
+        totalAcc = {}
+
+        couples = []
+
+        for i, element in enumerate(self.elements):
+            for j, element2 in enumerate(self.elements):
+                if i == j:
+                    continue
+
+                if (element.id, element2.id) in couples or (element2.id, element.id) in couples:
+                    continue
+
+                distance_vector = np.array(element2.position) - np.array(element.position) # vector from element 1 to element 2
+                distance_magnitude = np.sqrt(np.sum(distance_vector ** 2))
+                distance_unit_vector = distance_vector / distance_magnitude
+
+                if distance_magnitude < (element.radius + element2.radius): # if the elements are touching
+                    print("COLLISION DETECTED")
+                    continue
+                
+                force_magnitude = config.G * element.mass * element2.mass / (distance_magnitude ** 2)
+
+                force_vector_on_1 = force_magnitude * distance_unit_vector # force vector on element 1
+                force_vector_on_2 = -force_vector_on_1
+
+                if element.id not in totalForce:
+                    totalForce[element.id] = force_vector_on_1
+
+                else:
+                    totalForce[element.id] += force_vector_on_1
+
+                if element2.id not in totalForce:
+                    totalForce[element2.id] = force_vector_on_2
+
+                else:
+                    totalForce[element2.id] += force_vector_on_2
+
+                couples.append((element.id, element2.id))
+
+        for element in self.elements:
+            if not element.id in totalForce:
+                continue
+
+            acc = totalForce[element.id] / element.mass
+
+            if element.id not in totalAcc:
+                totalAcc[element.id] = acc
+
+            element.updateVelocity(acc)
+
+        return totalAcc
+
+    def addTensorboard(self, accDict: dict):
         acc_dict = {
             'x': {},
             'y': {},
             'z': {}
         }
-        for i, acc in enumerate(accList):
-            for j, axis in enumerate(['x', 'y', 'z']):
-                acc_dict[axis][f"Sphere {i+1}"] = acc[j]
+        
+        for sphereId in accDict.keys():
+            for i, axis in enumerate(['x', 'y', 'z']):
+                acc_dict[axis][f"Sphere {sphereId}"] = accDict[sphereId][i]
 
         velocity_dict = {
             'x': {},
@@ -356,27 +392,24 @@ class App:
             'z': {}
         }
 
-        for i, vel in enumerate([self.sphere.velocity, self.sphere2.velocity]):
-            for j, axis in enumerate(['x', 'y', 'z']):
-                velocity_dict[axis][f"Sphere {i+1}"] = vel[j]
-
         position_dict = {
             'x': {},
             'y': {},
             'z': {}
         }
 
-        for i, pos in enumerate([self.sphere.position, self.sphere2.position]):
+        for i, el in enumerate(self.elements):
             for j, axis in enumerate(['x', 'y', 'z']):
-                position_dict[axis][f"Sphere {i+1}"] = pos[j]
+                velocity_dict[axis][f"Sphere {i+1}"] = el.velocity[j]
+                position_dict[axis][f"Sphere {i+1}"] = el.position[j]
+
 
         for axis in ['x', 'y', 'z']:
             for key in acc_dict[axis]:
                 self.tensorboardManager.add_scalar(f"Acceleration/{axis}", {key: acc_dict[axis][key]}, self.counter)
                 self.tensorboardManager.add_scalar(f"Velocity/{axis}", {key: velocity_dict[axis][key]}, self.counter)
                 self.tensorboardManager.add_scalar(f"Position/{axis}", {key: position_dict[axis][key]}, self.counter)
-
-                
+           
     def run(self):
         pressing_mouse = False
         last_mouse_pos = (0, 0)
@@ -416,22 +449,22 @@ class App:
                 self.camera.rotatexy(change_xy)
                 last_mouse_pos = current_mouse_pos
 
-
             glClear(GL_COLOR_BUFFER_BIT)
 
-            acc1, acc2 = self.twoBodySolution()
-            self.sphere.moveAccToVelocity()
-            self.sphere2.moveAccToVelocity()
+            totalAccData = self.nBodySolution()
+            
+            for element in self.elements:
+                element.moveAccToVelocity()
 
-            self.addTensorboard([acc1, acc2])
+            self.addTensorboard(totalAccData)
 
             # draw the camera
             self.camera.drawCurrentPlane()
         
             # draw the elements
 
-            self.sphere2.draw()
-            self.sphere.draw()
+            for element in self.elements:
+                element.draw()
 
             # rest
             
@@ -442,14 +475,11 @@ class App:
             self.clock.tick(config.FPS)
             # there will be an inconsistency in the frame rate, but it can be ignored for now
 
-            if int(self.counter/config.FPS) == float(self.counter/config.FPS):
-                for _ in range(6):
-                    print ("\033[A                             \033[A")
-
+            if int(self.counter/config.FPS/2) == float(self.counter/config.FPS/2):
                 x_angle, y_angle, z_angle = self.camera.get_xyz_angle()
 
                 print(f"Current Frame: {self.counter}\nTime In Simulation: {round(time_in_simulation/60, 2)} minutes\nTime Since Start: {round((time.time() - self.start_time)/60, 2)} minutes", 
-                      f"\nCalculation Time Per Frame: {round(GlobalVariables.CALC_SPEED_PER_FRAME, 4)} seconds\nCurrent Axis Angles: {x_angle}, {y_angle}, {z_angle} degrees\nAcceleration on Sphere 1: {acc1}")
+                      f"\nCalculation Time Per Frame: {round(GlobalVariables.CALC_SPEED_PER_FRAME, 4)} seconds\nCurrent Axis Angles: {x_angle}, {y_angle}, {z_angle} degrees")
                 
         pg.quit()
 

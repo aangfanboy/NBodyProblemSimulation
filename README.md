@@ -1,11 +1,28 @@
-# N Body Problem Simulation With OpenGL & CUDA
+# N Body Problem Simulation With OpenGL
 
 This project aims to simulate the well known N Body problem in physics. Code will be written in Python. After successful simulation of 2 body problem, data visulazition with tensorboard will be integrated.
 
+## Results
+
+### Simulation
+
 <p align="center" >
-<img src="images/2BodyTensorBoard.jpeg" alt="TensorBoard Results" width="700"/>
-<img src="images/2bodysim.gif" alt="Simulation Results" width="850"/>
+<img src="images/nbodysim.gif" alt="Simulation Results" width="850"/>
 </p>
+
+Objects in the simulation can be modified from *main.py*. Simulation itself has a **collision detection** algorithm, so even though there might be an illusion of collision, as long as it is not logged to the console, there is no collision.
+
+### TensorBoard
+
+<p align="center" >
+<img src="images/NBodyTensorBoard.jpeg" alt="Tensorboard Results" width="850"/>
+</p>
+
+X, Y and Z components of position, velocity and acceleration are logged into the tensorboard run for every object at the simulation. After/During the run of simulation, the following command will start the tensorboard dashboard, provided it is installed.
+
+`python -m tensorboard.main --logdir runs`
+
+From there, every vector component can be analyzed indivudally & per time discrete.
 
 ## Time Discretization Policy
 
@@ -77,9 +94,9 @@ Where:
 - [x] Add Newtonian Coordinate Map to the Main Screen
 - [x] Finalize time discretization process
 - [x] Finalize the simulation for 2 body problem
-- [ ] Plot Results to TensorBoard
-- [ ] Solve the same 2 body calculations with CUDA (benchmark ?)
-- [ ] Solve the N body problem with CUDA's parallel computing
+- [x] Plot Results to TensorBoard
+- [x] Simulate the N body problem
+- [x] Share plotted results
 
 ## Dependencies
 
