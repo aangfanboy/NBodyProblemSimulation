@@ -7,7 +7,7 @@ This project aims to simulate the well known N Body problem in physics. Code wil
 ### Simulation
 
 <p align="center" >
-<img src="images/nbodysim.gif" alt="Simulation Results" width="850"/>
+<img src="images/NbodysimR.gif" alt="Simulation Results" width="850"/>
 </p>
 
 Objects in the simulation can be modified from *main.py*. Simulation itself has a **collision detection** algorithm, so even though there might be an illusion of collision, as long as it is not logged to the console, there is no collision.
